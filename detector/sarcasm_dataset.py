@@ -1,4 +1,7 @@
+import torch
+from pandas import DataFrame
 from torch.utils.data import Dataset
+from transformers import PreTrainedTokenizerBase
 
 
 class SarcasmDataset(Dataset):
@@ -8,13 +11,26 @@ class SarcasmDataset(Dataset):
     TEXT_COLUMN = 'comment'
     LABEL_COLUMN = 'label'
 
-    def __init__(self, encoded: dict):
+    def __init__(self, df: DataFrame, tokenizer: PreTrainedTokenizerBase):
         super().__init__()
 
-        self.encoded = encoded
+        self.df = df.copy()
+        self.tokenizer = tokenizer
 
     def __len__(self):
-        return next(iter(self.encoded.values())).shape[0]
+        return len(self.df)
 
     def __getitem__(self, index):
-        return {k: v[index] for k, v in self.encoded.items()}
+        selected_comment = self.df.loc[index][self.TEXT_COLUMN]
+        encoded = self.tokenizer(selected_comment,
+                                 padding='max_length',
+                                 return_token_type_ids=False,
+                                 truncation=True,
+                                 max_length=512,
+                                 return_tensors='pt')
+        encoded = {k: v.flatten() for k, v in encoded.items()}
+
+        if SarcasmDataset.LABEL_COLUMN in self.df.columns:
+            encoded['targets'] = torch.tensor(self.df.loc[index][SarcasmDataset.LABEL_COLUMN])
+
+        return encoded

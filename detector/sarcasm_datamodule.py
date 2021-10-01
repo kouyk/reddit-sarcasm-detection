@@ -57,7 +57,7 @@ class SarcasmDataModule(LightningDataModule):
             if not self.test_pkl:
                 return
 
-            with open(self.train_pkl, 'rb') as f:
+            with open(self.test_pkl, 'rb') as f:
                 encoded = pickle.load(f)
 
             self.test_dataset = SarcasmDataset(encoded)

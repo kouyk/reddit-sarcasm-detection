@@ -3,7 +3,7 @@ import re
 import torch
 from pytorch_lightning import LightningModule
 from torch.optim.lr_scheduler import OneCycleLR
-from torchmetrics import Accuracy, F1, Precision, Recall, MatthewsCorrcoef, CohenKappa, AUROC
+from torchmetrics import Accuracy, F1, Precision, Recall, MatthewsCorrcoef, CohenKappa
 from transformers import AutoModelForSequenceClassification, get_constant_schedule_with_warmup
 
 from .util import StageType

@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import pandas as pd
 import torch
@@ -12,7 +10,6 @@ from transformers import logging
 from detector import SarcasmDataModule, SarcasmDetector
 
 logging.set_verbosity_error()
-os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
 if __name__ == "__main__":
     cfg = {

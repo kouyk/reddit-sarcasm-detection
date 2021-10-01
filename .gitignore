@@ -140,5 +140,8 @@ cython_debug/
 # Dataset should not be stored
 dataset/
 
+# And logs too
+lightning_logs/
+
 # Intellij IDEs
 .idea/

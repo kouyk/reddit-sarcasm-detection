@@ -18,7 +18,7 @@ if __name__ == "__main__":
         'lr': 3e-5,
         'freeze_backbone': 0,
         'max_epochs': 5,
-        'batch_size': 64,
+        'batch_size': 32,
         'dropout': 0.1,
         'scheduler': 'onecycle',
         'num_gpus': 2

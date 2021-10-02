@@ -74,6 +74,28 @@ class SarcasmDetector(LightningModule):
 
         return max(layer_index) + 1
 
+    @property
+    def num_training_steps(self) -> int:
+        """
+        Total training steps inferred from datamodule and devices.
+
+        Adapted from https://github.com/PyTorchLightning/pytorch-lightning/issues/5449#issuecomment-774265729
+        """
+
+        if self.trainer.max_steps:
+            return self.trainer.max_steps
+
+        limit_batches = self.trainer.limit_train_batches
+        batches = len(self.train_dataloader())
+        batches = min(batches, limit_batches) if isinstance(limit_batches, int) else int(limit_batches * batches)
+
+        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
+        if self.trainer.tpu_cores:
+            num_devices = max(num_devices, self.trainer.tpu_cores)
+
+        effective_accum = self.trainer.accumulate_grad_batches * num_devices
+        return (batches // effective_accum) * self.trainer.max_epochs
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=self.hparams.lr,
                                       weight_decay=0.01)
@@ -87,12 +109,11 @@ class SarcasmDetector(LightningModule):
 
         if self.hparams.scheduler == 'onecycle':
             lr_scheduler = OneCycleLR(optimizer,
-                                      total_steps=total_steps,
+                                      total_steps=self.num_training_steps,
                                       max_lr=self.hparams.lr)
         else:
-            num_warmup_steps = total_steps * 3 // 10
-            lr_scheduler = get_constant_schedule_with_warmup(optimizer,
-                                                             num_warmup_steps=num_warmup_steps)
+            num_warmup_steps = self.num_training_steps * 3 // 10
+            lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
         return {
             'optimizer': optimizer,

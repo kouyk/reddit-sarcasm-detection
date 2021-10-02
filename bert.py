@@ -20,8 +20,11 @@ if __name__ == "__main__":
         'max_epochs': 5,
         'batch_size': 64,
         'dropout': 0.1,
-        'scheduler': 'onecycle'
+        'scheduler': 'onecycle',
+        'num_gpus': 2
     }
+
+    use_gpu = cfg['num_gpus'] > 0
 
     dm = SarcasmDataModule(train_path='/temp/kouyk/sarcasm-dataset/train-balanced.csv',
                            pretrained_name=cfg['pretrained_name'],
@@ -48,16 +51,16 @@ if __name__ == "__main__":
     )
 
     trainer = Trainer(
-        gpus=1,
+        gpus=cfg['num_gpus'],
         callbacks=callbacks,
         weights_save_path="checkpoints",
         logger=logger,
         log_every_n_steps=50,
         max_epochs=cfg['max_epochs'],
         weights_summary=None,
-        precision=16 if torch.cuda.is_available() else 32,
-        accelerator="ddp",
-        plugins=DDPPlugin(find_unused_parameters=False),
+        precision=16 if use_gpu else 32,
+        accelerator="ddp" if use_gpu else None,
+        plugins=DDPPlugin(find_unused_parameters=False) if use_gpu else None,
         #fast_dev_run=True
     )
 

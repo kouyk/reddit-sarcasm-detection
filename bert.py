@@ -4,6 +4,7 @@ import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.plugins.training_type import DDPPlugin
 from sklearn.model_selection import train_test_split
 from transformers import logging
 
@@ -22,7 +23,7 @@ if __name__ == "__main__":
         'scheduler': 'onecycle'
     }
 
-    dm = SarcasmDataModule(train_path='train-balanced.csv',
+    dm = SarcasmDataModule(train_path='/temp/kouyk/sarcasm-dataset/train-balanced.csv',
                            pretrained_name=cfg['pretrained_name'],
                            batch_size=cfg['batch_size'])
 

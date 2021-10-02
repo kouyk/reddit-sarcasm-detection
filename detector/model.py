@@ -1,5 +1,4 @@
 import re
-from math import ceil, floor
 
 import torch
 from pytorch_lightning import LightningModule
@@ -140,7 +139,12 @@ class SarcasmDetector(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         return_dict = self.common_step(batch, step_type=StageType.VAL)
-        self.log_dict({'hp/val_loss': return_dict['loss'], 'hp/val_acc': self.metrics['val_acc'].compute()})
+        self.log_dict(
+            {
+                'hp/val_loss': return_dict['loss'],
+                'hp/val_acc': self.metrics[StageType.VAL]['val_acc'].compute()
+            }
+        )
         return return_dict
 
     def test_step(self, batch, batch_idx):

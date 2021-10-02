@@ -142,7 +142,7 @@ class SarcasmDetector(LightningModule):
         self.log_dict(
             {
                 'hp/val_loss': return_dict['loss'],
-                'hp/val_acc': self.metrics[StageType.VAL]['val_acc'].compute()
+                'hp/val_acc': self.metrics[StageType.VAL]['accuracy'].compute()
             }
         )
         return return_dict

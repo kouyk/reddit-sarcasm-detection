@@ -137,11 +137,10 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Dataset should not be stored
+# Dataset, logs and checkpoints should not be stored
 dataset/
-
-# And logs too
 lightning_logs/
+checkpoints/
 
 # Intellij IDEs
 .idea/

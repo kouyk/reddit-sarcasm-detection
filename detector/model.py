@@ -1,9 +1,10 @@
 import re
+from math import ceil, floor
 
 import torch
 from pytorch_lightning import LightningModule
 from torch.optim.lr_scheduler import OneCycleLR
-from torchmetrics import Accuracy, F1, Precision, Recall, MatthewsCorrcoef, CohenKappa
+from torchmetrics import Accuracy, F1, Precision, Recall, MatthewsCorrcoef, CohenKappa, MetricCollection
 from transformers import AutoModelForSequenceClassification, get_constant_schedule_with_warmup
 
 from .util import StageType
@@ -17,21 +18,18 @@ class SarcasmDetector(LightningModule):
         self.hparams.num_classes = 2
         self.return_logits = return_logits
 
-        # Initialise the metrics
         self.classifier = self.get_classifier()
-        self.accuracy = {step_type: Accuracy(num_classes=self.hparams.num_classes) for step_type in StageType}
-        self.f1_micro = {step_type: F1(average='micro', num_classes=self.hparams.num_classes)
-                         for step_type in StageType}
-        self.f1_macro = {step_type: F1(average='macro', num_classes=self.hparams.num_classes)
-                         for step_type in StageType}
-        self.pre = {step_type: Precision(average='macro', num_classes=self.hparams.num_classes)
-                          for step_type in StageType}
-        self.recall = {step_type: Recall(average='macro', num_classes=self.hparams.num_classes)
-                       for step_type in StageType}
-        self.mcc = {step_type: MatthewsCorrcoef(num_classes=self.hparams.num_classes) for step_type in StageType}
-        self.kappa = {step_type: CohenKappa(num_classes=self.hparams.num_classes) for step_type in StageType}
-
         self.freeze_layers()
+
+        # Initialise the metrics
+        metrics = MetricCollection({'accuracy': Accuracy(num_classes=self.hparams.num_classes),
+                                    'f1': F1(average='macro', num_classes=self.hparams.num_classes),
+                                    'precision': Precision(average='macro', num_classes=self.hparams.num_classes),
+                                    'recall': Recall(average='macro', num_classes=self.hparams.num_classes),
+                                    'mcc': MatthewsCorrcoef(num_classes=self.hparams.num_classes),
+                                    'kappa': CohenKappa(num_classes=self.hparams.num_classes)})
+        self.metrics = {step_type: metrics.clone(prefix=step_type.value)
+                        for step_type in StageType if step_type != StageType.PREDICT}
 
     def get_classifier(self):
         try:
@@ -100,13 +98,6 @@ class SarcasmDetector(LightningModule):
         optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=self.hparams.lr,
                                       weight_decay=0.01)
 
-        if self.trainer.datamodule is not None:
-            num_steps_per_epoch = len(self.trainer.datamodule.train_dataloader())
-        else:
-            num_steps_per_epoch = len(self.train_dataloader())
-
-        total_steps = num_steps_per_epoch * self.trainer.max_epochs
-
         if self.hparams.scheduler == 'onecycle':
             lr_scheduler = OneCycleLR(optimizer,
                                       total_steps=self.num_training_steps,
@@ -132,20 +123,12 @@ class SarcasmDetector(LightningModule):
         predictions = torch.argmax(output.logits, dim=1).cpu()
         targets = targets.cpu()
 
-        prefix = step_type.value
-        self.log(f'{prefix}_loss', output.loss, prog_bar=True, logger=step_type != StageType.TEST)
-        self.log_dict(
-            {
-                f'{prefix}_accuracy': self.accuracy[step_type](predictions, targets),
-                f'{prefix}_f1_micro': self.f1_micro[step_type](predictions, targets),
-                f'{prefix}_f1_macro': self.f1_macro[step_type](predictions, targets),
-                f'{prefix}_precision': self.pre[step_type](predictions, targets),
-                f'{prefix}_recall': self.recall[step_type](predictions, targets),
-                f'{prefix}_mcc': self.mcc[step_type](predictions, targets),
-                f'{prefix}_kappa': self.kappa[step_type](predictions, targets),
-            },
-            prog_bar=False, logger=step_type != StageType.TEST
+        self.log(
+            f'{step_type.value}_loss', output.loss, prog_bar=True, logger=step_type != StageType.TEST,
+            sync_dist=step_type in (StageType.VAL, StageType.TEST)
         )
+        metric_output = self.metrics[step_type](predictions, targets)
+        self.log_dict(metric_output, prog_bar=False, logger=step_type != StageType.TEST)
 
         return {'loss': output.loss, 'predictions': predictions, 'targets': targets}
 
@@ -154,11 +137,8 @@ class SarcasmDetector(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         return_dict = self.common_step(batch, step_type=StageType.VAL)
-        self.log('hp/val_loss', return_dict['loss'])
+        self.log_dict({'hp/val_loss': return_dict['loss'], 'hp/val_acc': self.metrics['val_acc'].compute()})
         return return_dict
-
-    def validation_epoch_end(self, validation_step_outputs):
-        self.log('hp/val_acc', self.accuracy[StageType.VAL].compute())
 
     def test_step(self, batch, batch_idx):
         return self.common_step(batch, step_type=StageType.TEST)

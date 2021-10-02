@@ -132,6 +132,9 @@ class SarcasmDetector(LightningModule):
 
         return {'loss': output.loss, 'predictions': predictions, 'targets': targets}
 
+    def on_train_start(self):
+        self.logger.log_hyperparams(self.hparams, {"hp/val_loss": 0, "hp/val_acc": 0})
+
     def training_step(self, batch, batch_idx):
         return self.common_step(batch, step_type=StageType.TRAIN)
 

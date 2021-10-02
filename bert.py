@@ -14,10 +14,10 @@ logging.set_verbosity_error()
 if __name__ == "__main__":
     cfg = {
         'pretrained_name': 'bert-base-cased',
-        'lr': 2e-5,
-        'freeze_backbone': 12,
-        'max_epochs': 4,
-        'batch_size': 128,
+        'lr': 3e-5,
+        'freeze_backbone': 0,
+        'max_epochs': 5,
+        'batch_size': 64,
         'dropout': 0.1,
         'scheduler': 'onecycle'
     }
@@ -55,7 +55,9 @@ if __name__ == "__main__":
         max_epochs=cfg['max_epochs'],
         weights_summary=None,
         precision=16 if torch.cuda.is_available() else 32,
-        #accelerator="ddp"
+        accelerator="ddp",
+        plugins=DDPPlugin(find_unused_parameters=False),
+        #fast_dev_run=True
     )
 
     model = SarcasmDetector(config=cfg)

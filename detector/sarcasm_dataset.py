@@ -26,7 +26,7 @@ class SarcasmDataset(Dataset):
                                  padding='max_length',
                                  return_token_type_ids=False,
                                  truncation=True,
-                                 max_length=512,
+                                 max_length=64,
                                  return_tensors='pt')
         encoded = {k: v.flatten() for k, v in encoded.items()}
 

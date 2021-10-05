@@ -1,7 +1,7 @@
-import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.plugins.training_type import DDPPlugin
 from transformers import logging
 
 from detector import SarcasmDataModule, SarcasmDetector
@@ -17,7 +17,8 @@ if __name__ == "__main__":
         'batch_size': 128,
         'dropout': 0.1,
         'scheduler': 'onecycle',
-        'deterministic': False
+        'deterministic': False,
+        'num_gpus': 1
     }
 
     if cfg['deterministic']:
@@ -47,6 +48,8 @@ if __name__ == "__main__":
         default_hp_metric=False
     )
 
+    multi_gpu = cfg['num_gpus'] > 1
+
     trainer = Trainer(
         gpus=1,
         callbacks=callbacks,
@@ -55,9 +58,10 @@ if __name__ == "__main__":
         log_every_n_steps=50,
         max_epochs=cfg['max_epochs'],
         weights_summary=None,
-        precision=16 if torch.cuda.is_available() else 32,
-        deterministic=cfg['deterministic']
-        #accelerator="ddp"
+        precision=16 if cfg['num_gpus'] > 0 else 32,
+        deterministic=cfg['deterministic'],
+        accelerator="ddp" if multi_gpu else None,
+        plugins=DDPPlugin(find_unused_parameters=False) if multi_gpu else None
     )
 
     model = SarcasmDetector(config=cfg)

@@ -24,7 +24,9 @@ if __name__ == "__main__":
     if cfg['deterministic']:
         seed_everything(3244, workers=True)
 
-    dm = SarcasmDataModule(train_path='train-balanced.csv',
+    dm = SarcasmDataModule(train_path='dataset/train.csv',
+                           val_path='dataset/val.csv',
+                           test_path='dataset/test-balanced.csv',
                            pretrained_name=cfg['pretrained_name'],
                            batch_size=cfg['batch_size'])
 

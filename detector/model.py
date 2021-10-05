@@ -13,6 +13,7 @@ from .util import StageType
 
 
 class SarcasmDetector(LightningModule):
+    num_classes = 2
 
     @staticmethod
     def add_argparse_args(parent_parser):
@@ -39,16 +40,16 @@ class SarcasmDetector(LightningModule):
         self.classifier = torch.nn.Sequential(OrderedDict([
             ('dense', nn.Linear(self.extractor.config.hidden_size, self.extractor.config.hidden_size)),
             ('dropout', nn.Dropout(self.hparams.dropout)),
-            ('out_proj', nn.Linear(self.extractor.config.hidden_size, 2))
+            ('out_proj', nn.Linear(self.extractor.config.hidden_size, self.num_classes))
         ]))
 
         # Initialise the metrics
-        metrics = MetricCollection({'accuracy': Accuracy(num_classes=self.hparams.num_classes),
-                                    'f1': F1(average='macro', num_classes=self.hparams.num_classes),
-                                    'precision': Precision(average='macro', num_classes=self.hparams.num_classes),
-                                    'recall': Recall(average='macro', num_classes=self.hparams.num_classes),
-                                    'mcc': MatthewsCorrcoef(num_classes=self.hparams.num_classes),
-                                    'kappa': CohenKappa(num_classes=self.hparams.num_classes)})
+        metrics = MetricCollection({'accuracy': Accuracy(num_classes=self.num_classes),
+                                    'f1': F1(average='macro', num_classes=self.num_classes),
+                                    'precision': Precision(average='macro', num_classes=self.num_classes),
+                                    'recall': Recall(average='macro', num_classes=self.num_classes),
+                                    'mcc': MatthewsCorrcoef(num_classes=self.num_classes),
+                                    'kappa': CohenKappa(num_classes=self.num_classes)})
         self.metrics = {step_type: metrics.clone(prefix=f'{step_type.value}_')
                         for step_type in StageType if step_type != StageType.PREDICT}
 

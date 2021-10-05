@@ -145,8 +145,8 @@ class SarcasmDetector(LightningModule):
         targets = batch['targets']
 
         loss, logits = self(input_ids, attention_mask=attention_mask, labels=targets)
-        predictions = torch.argmax(logits, dim=1).cpu()
-        targets = targets.cpu()
+        predictions = torch.argmax(logits, dim=1)
+        targets = targets
 
         self.log(
             f'{step_type.value}_loss', loss, prog_bar=True, logger=step_type != StageType.TEST,

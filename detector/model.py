@@ -1,10 +1,13 @@
 import re
+from collections import OrderedDict
 
 import torch
 from pytorch_lightning import LightningModule
+from torch import nn
+from torch.nn.functional import cross_entropy
 from torch.optim.lr_scheduler import OneCycleLR
 from torchmetrics import Accuracy, F1, Precision, Recall, MatthewsCorrcoef, CohenKappa, MetricCollection
-from transformers import AutoModelForSequenceClassification, get_constant_schedule_with_warmup
+from transformers import AutoModel, get_constant_schedule_with_warmup
 
 from .util import StageType
 
@@ -14,11 +17,17 @@ class SarcasmDetector(LightningModule):
     def __init__(self, config, return_logits=False):
         super().__init__()
         self.save_hyperparameters(config)
-        self.hparams.num_classes = 2
         self.return_logits = return_logits
 
-        self.classifier = self.get_classifier()
-        self.freeze_layers()
+        self.extractor = self.get_extractor()
+        self.freeze_extractor_layers()
+
+        # Adapted from RoBERTa's classification head
+        self.classifier = torch.nn.Sequential(OrderedDict([
+            ('dense', nn.Linear(self.extractor.config.hidden_size, self.extractor.config.hidden_size)),
+            ('dropout', nn.Dropout(self.hparams.dropout)),
+            ('out_proj', nn.Linear(self.extractor.config.hidden_size, 2))
+        ]))
 
         # Initialise the metrics
         metrics = MetricCollection({'accuracy': Accuracy(num_classes=self.hparams.num_classes),
@@ -30,41 +39,43 @@ class SarcasmDetector(LightningModule):
         self.metrics = {step_type: metrics.clone(prefix=f'{step_type.value}_')
                         for step_type in StageType if step_type != StageType.PREDICT}
 
-    def get_classifier(self):
+    def get_extractor(self):
         try:
-            model = AutoModelForSequenceClassification.from_pretrained(
+            model = AutoModel.from_pretrained(
                 self.hparams.pretrained_name,
                 hidden_dropout_prob=self.hparams.dropout,
                 num_labels=self.hparams.num_classes,
                 problem_type='single_label_classification'
             )
         except TypeError:
-            model = AutoModelForSequenceClassification.from_pretrained(
+            model = AutoModel.from_pretrained(
                 self.hparams.pretrained_name,
                 dropout=self.hparams.dropout,
                 num_labels=self.hparams.num_classes,
                 problem_type='single_label_classification'
             )
 
-        return model
+        extractor = torch.nn.Sequential(OrderedDict(model.named_children()))
 
-    def freeze_layers(self):
+        return extractor
+
+    def freeze_extractor_layers(self):
         if self.hparams.freeze_backbone is not None:
-            layer_max = self.get_layer_max()
+            layer_max = self.get_extractor_layer_max()
             assert (isinstance(self.hparams.freeze_backbone, int)
                     and 0 <= self.hparams.freeze_backbone <= layer_max), \
                 f'freeze_backbone must be an integer between 0 and {layer_max}'
 
-            for name, param in self.classifier.base_model.named_parameters():
+            for name, param in self.extractor.base_model.named_parameters():
                 if f'layer.{self.hparams.freeze_backbone}.' in name:
                     break
 
                 param.requires_grad = False
 
-    def get_layer_max(self):
+    def get_extractor_layer_max(self):
         pattern = re.compile(r"\.layer\.(\d+)\.")
         layer_index = set()
-        for name, param in self.classifier.named_parameters():
+        for name, param in self.extractor.named_parameters():
             match = pattern.search(name)
             if match:
                 layer_index.add(int(match.group(1)))
@@ -111,40 +122,42 @@ class SarcasmDetector(LightningModule):
         }
 
     def forward(self, input_ids, attention_mask, labels=None):
-        return self.classifier(input_ids, attention_mask=attention_mask, labels=labels)
+        outputs = self.extractor(input_ids, attention_mask=attention_mask, labels=labels)
+        logits = self.classifier(outputs.pooler_output)
+
+        if not labels:
+            return logits
+
+        loss = cross_entropy(logits, labels)
+        return loss, logits
 
     def common_step(self, batch, step_type: StageType):
         input_ids = batch['input_ids']
         attention_mask = batch['attention_mask']
         targets = batch['targets']
 
-        output = self(input_ids, attention_mask=attention_mask, labels=targets)
-        predictions = torch.argmax(output.logits, dim=1).cpu()
+        loss, logits = self(input_ids, attention_mask=attention_mask, labels=targets)
+        predictions = torch.argmax(logits, dim=1).cpu()
         targets = targets.cpu()
 
         self.log(
-            f'{step_type.value}_loss', output.loss, prog_bar=True, logger=step_type != StageType.TEST,
+            f'{step_type.value}_loss', loss, prog_bar=True, logger=step_type != StageType.TEST,
             sync_dist=step_type in (StageType.VAL, StageType.TEST)
         )
         metric_output = self.metrics[step_type](predictions, targets)
         self.log_dict(metric_output, prog_bar=False, logger=step_type != StageType.TEST)
 
-        return {'loss': output.loss, 'predictions': predictions, 'targets': targets}
+        return {'loss': loss, 'predictions': predictions, 'targets': targets}
 
     def on_train_start(self):
-        self.logger.log_hyperparams(self.hparams, {"hp/val_loss": 0, "hp/val_acc": 0})
+        self.logger.log_hyperparams(self.hparams, {"hp/val_loss": 0})
 
     def training_step(self, batch, batch_idx):
         return self.common_step(batch, step_type=StageType.TRAIN)
 
     def validation_step(self, batch, batch_idx):
         return_dict = self.common_step(batch, step_type=StageType.VAL)
-        self.log_dict(
-            {
-                'hp/val_loss': return_dict['loss'],
-                # 'hp/val_acc': self.metrics[StageType.VAL]['accuracy'].compute()
-            }
-        )
+        self.log('hp/val_loss', return_dict['loss'])
         return return_dict
 
     def test_step(self, batch, batch_idx):
@@ -154,12 +167,12 @@ class SarcasmDetector(LightningModule):
         input_ids = batch['input_ids']
         attention_mask = batch['attention_mask']
 
-        output = self(input_ids, attention_mask=attention_mask)
+        logits = self(input_ids, attention_mask=attention_mask)
 
         if self.return_logits:
-            return output.logits
+            return logits
 
-        predictions = torch.argmax(output.logits, 1)
+        predictions = torch.argmax(logits, 1)
 
         return predictions
 

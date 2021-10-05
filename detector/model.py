@@ -14,9 +14,22 @@ from .util import StageType
 
 class SarcasmDetector(LightningModule):
 
-    def __init__(self, config, return_logits=False):
+    @staticmethod
+    def add_argparse_args(parent_parser):
+        parser = parent_parser.add_argument_group("SarcasmDectector")
+        parser.add_argument('--pretrained_name', help="Name of pretrained model", default='bert-base-cased')
+        parser.add_argument('--lr', help="Learning rate", default=1e-5, type=float)
+        parser.add_argument('--freeze_extractor', help="Number of layers to freeze in the pretrained model", default=0,
+                            type=int)
+        parser.add_argument('--dropout', default=0.1, type=float)
+        parser.add_argument('--scheduler', help="LR scheduler", default='onecycle', choices=['onecycle', 'warmup_only'])
+
+        return parent_parser
+
+    def __init__(self, return_logits=False, **kwargs):
         super().__init__()
-        self.save_hyperparameters(config)
+        self.save_hyperparameters("pretrained_name", "lr", "freeze_extractor", "dropout", "scheduler", "batch_size",
+                                  "max_length")
         self.return_logits = return_logits
 
         self.extractor = self.get_extractor()
@@ -60,14 +73,14 @@ class SarcasmDetector(LightningModule):
         return extractor
 
     def freeze_extractor_layers(self):
-        if self.hparams.freeze_backbone is not None:
+        if self.hparams.freeze_extractor is not None:
             layer_max = self.get_extractor_layer_max()
-            assert (isinstance(self.hparams.freeze_backbone, int)
-                    and 0 <= self.hparams.freeze_backbone <= layer_max), \
-                f'freeze_backbone must be an integer between 0 and {layer_max}'
+            assert (isinstance(self.hparams.freeze_extractor, int)
+                    and 0 <= self.hparams.freeze_extractor <= layer_max), \
+                f'freeze_extractor must be an integer between 0 and {layer_max}'
 
             for name, param in self.extractor.base_model.named_parameters():
-                if f'layer.{self.hparams.freeze_backbone}.' in name:
+                if f'layer.{self.hparams.freeze_extractor}.' in name:
                     break
 
                 param.requires_grad = False

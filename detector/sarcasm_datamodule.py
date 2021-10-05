@@ -15,13 +15,15 @@ from .util import StageType
 class SarcasmDataModule(LightningDataModule):
 
     def __init__(self,
-                 train_path: str,
+                 train_path: str = None,
+                 val_path: str = None,
                  test_path: str = None,
                  pretrained_name: str = 'bert-base-cased',
                  batch_size=32):
         super().__init__()
 
         self.train_path = train_path
+        self.val_path = val_path
         self.test_path = test_path
         self.batch_size = batch_size
 
@@ -31,13 +33,21 @@ class SarcasmDataModule(LightningDataModule):
 
     def setup(self, stage=None):
         if stage in (None, 'fit'):
-            df = pd.read_csv(self.train_path)
+            if not self.train_path:
+                return
 
-            # Perform train-val split
-            train_df, val_df = train_test_split(df, test_size=0.2)
+            if self.val_path:
+                train_df = pd.read_csv(self.train_path)
+                val_df = pd.read_csv(self.val_path)
+            else:
+                # Perform train-val split
+                df = pd.read_csv(self.train_path)
+                train_df, val_df = train_test_split(df, test_size=0.2)
+                train_df.reset_index(drop=True)
+                val_df.reset_index(drop=True)
 
-            self.train_dataset = SarcasmDataset(train_df.reset_index(drop=True), self.tokenizer)
-            self.val_dataset = SarcasmDataset(val_df.reset_index(drop=True), self.tokenizer)
+            self.train_dataset = SarcasmDataset(train_df, self.tokenizer)
+            self.val_dataset = SarcasmDataset(val_df, self.tokenizer)
 
         if stage in (None, 'test'):
             if not self.test_path:

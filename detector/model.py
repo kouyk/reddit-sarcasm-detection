@@ -130,10 +130,10 @@ class SarcasmDetector(LightningModule):
         }
 
     def forward(self, input_ids, attention_mask, labels=None):
-        outputs = self.extractor(input_ids, attention_mask=attention_mask, labels=labels)
+        outputs = self.extractor(input_ids, attention_mask=attention_mask)
         logits = self.classifier(outputs.pooler_output)
 
-        if not labels:
+        if labels is None:
             return logits
 
         loss = cross_entropy(logits, labels)

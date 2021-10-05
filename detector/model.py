@@ -69,10 +69,9 @@ class SarcasmDetector(LightningModule):
 
     def freeze_extractor_layers(self):
         if self.hparams.freeze_extractor is not None:
-            layer_max = self.get_extractor_layer_max()
             assert (isinstance(self.hparams.freeze_extractor, int)
-                    and 0 <= self.hparams.freeze_extractor <= layer_max), \
-                f'freeze_extractor must be an integer between 0 and {layer_max}'
+                    and 0 <= self.hparams.freeze_extractor <= self.extractor_layer_count), \
+                f'freeze_extractor must be an integer between 0 and {self.extractor_layer_count}'
 
             for name, param in self.extractor.base_model.named_parameters():
                 if f'layer.{self.hparams.freeze_extractor}.' in name:
@@ -80,7 +79,8 @@ class SarcasmDetector(LightningModule):
 
                 param.requires_grad = False
 
-    def get_extractor_layer_max(self):
+    @property
+    def extractor_layer_count(self) -> int:
         pattern = re.compile(r"\.layer\.(\d+)\.")
         layer_index = set()
         for name, param in self.extractor.named_parameters():

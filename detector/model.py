@@ -56,16 +56,12 @@ class SarcasmDetector(LightningModule):
         try:
             model = AutoModel.from_pretrained(
                 self.hparams.pretrained_name,
-                hidden_dropout_prob=self.hparams.dropout,
-                num_labels=self.hparams.num_classes,
-                problem_type='single_label_classification'
+                hidden_dropout_prob=self.hparams.dropout
             )
         except TypeError:
             model = AutoModel.from_pretrained(
                 self.hparams.pretrained_name,
-                dropout=self.hparams.dropout,
-                num_labels=self.hparams.num_classes,
-                problem_type='single_label_classification'
+                dropout=self.hparams.dropout
             )
 
         extractor = torch.nn.Sequential(OrderedDict(model.named_children()))

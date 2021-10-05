@@ -53,7 +53,7 @@ if __name__ == "__main__":
     multi_gpu = cfg['num_gpus'] > 1
 
     trainer = Trainer(
-        gpus=1,
+        gpus=cfg['num_gpus'],
         callbacks=callbacks,
         weights_save_path="checkpoints",
         logger=logger,

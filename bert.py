@@ -1,10 +1,7 @@
-import numpy as np
-import pandas as pd
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
-from sklearn.model_selection import train_test_split
 from transformers import logging
 
 from detector import SarcasmDataModule, SarcasmDetector

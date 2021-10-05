@@ -19,13 +19,15 @@ class SarcasmDataModule(LightningDataModule):
                  val_path: str = None,
                  test_path: str = None,
                  pretrained_name: str = 'bert-base-cased',
-                 batch_size=32):
+                 batch_size=32,
+                 max_tokenized_length=512):
         super().__init__()
 
         self.train_path = train_path
         self.val_path = val_path
         self.test_path = test_path
         self.batch_size = batch_size
+        self.max_tokenized_length = max_tokenized_length
 
         self.num_workers = os.cpu_count() if platform.system() == 'Linux' else 1  # workaround Windows worker issue
         self.pretrained_name = pretrained_name
@@ -46,15 +48,15 @@ class SarcasmDataModule(LightningDataModule):
                 train_df.reset_index(drop=True)
                 val_df.reset_index(drop=True)
 
-            self.train_dataset = SarcasmDataset(train_df, self.tokenizer)
-            self.val_dataset = SarcasmDataset(val_df, self.tokenizer)
+            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_tokenized_length)
+            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_tokenized_length)
 
         if stage in (None, 'test'):
             if not self.test_path:
                 return
 
             test_df = pd.read_csv(self.test_path)
-            self.test_dataset = SarcasmDataset(test_df, self.tokenizer)
+            self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_tokenized_length)
 
     def gen_dataloader(self, dataset, dataset_type: StageType):
         return DataLoader(dataset,

@@ -11,11 +11,12 @@ class SarcasmDataset(Dataset):
     TEXT_COLUMN = 'comment'
     LABEL_COLUMN = 'label'
 
-    def __init__(self, df: DataFrame, tokenizer: PreTrainedTokenizerBase):
+    def __init__(self, df: DataFrame, tokenizer: PreTrainedTokenizerBase, max_length: int = 512):
         super().__init__()
 
         self.df = df.copy()
         self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def __len__(self):
         return len(self.df)
@@ -26,7 +27,7 @@ class SarcasmDataset(Dataset):
                                  padding='max_length',
                                  return_token_type_ids=False,
                                  truncation=True,
-                                 max_length=512,
+                                 max_length=self.max_length,
                                  return_tensors='pt')
         encoded = {k: v.flatten() for k, v in encoded.items()}
 

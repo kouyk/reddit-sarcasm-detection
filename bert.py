@@ -18,7 +18,8 @@ if __name__ == "__main__":
         'dropout': 0.1,
         'scheduler': 'onecycle',
         'deterministic': False,
-        'num_gpus': 1
+        'num_gpus': 1,
+        'max_length': 128
     }
 
     if cfg['deterministic']:
@@ -28,7 +29,8 @@ if __name__ == "__main__":
                            val_path='dataset/val.csv',
                            test_path='dataset/test-balanced.csv',
                            pretrained_name=cfg['pretrained_name'],
-                           batch_size=cfg['batch_size'])
+                           batch_size=cfg['batch_size'],
+                           max_tokenized_length=cfg['max_length'])
 
     callbacks = [
         ModelCheckpoint(

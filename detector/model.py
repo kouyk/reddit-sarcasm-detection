@@ -54,17 +54,15 @@ class SarcasmDetector(LightningModule):
 
     def get_extractor(self):
         try:
-            model = AutoModel.from_pretrained(
+            extractor = AutoModel.from_pretrained(
                 self.hparams.pretrained_name,
                 hidden_dropout_prob=self.hparams.dropout
             )
         except TypeError:
-            model = AutoModel.from_pretrained(
+            extractor = AutoModel.from_pretrained(
                 self.hparams.pretrained_name,
                 dropout=self.hparams.dropout
             )
-
-        extractor = torch.nn.Sequential(OrderedDict(model.named_children()))
 
         return extractor
 

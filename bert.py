@@ -1,5 +1,5 @@
 import torch
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from transformers import logging
@@ -16,8 +16,12 @@ if __name__ == "__main__":
         'max_epochs': 4,
         'batch_size': 128,
         'dropout': 0.1,
-        'scheduler': 'onecycle'
+        'scheduler': 'onecycle',
+        'deterministic': False
     }
+
+    if cfg['deterministic']:
+        seed_everything(3244, workers=True)
 
     dm = SarcasmDataModule(train_path='train-balanced.csv',
                            pretrained_name=cfg['pretrained_name'],
@@ -39,7 +43,7 @@ if __name__ == "__main__":
     ]
     logger = TensorBoardLogger(
         save_dir='lightning_logs',
-        name=f'bert',
+        name=cfg['pretrained_name'],
         default_hp_metric=False
     )
 
@@ -52,6 +56,7 @@ if __name__ == "__main__":
         max_epochs=cfg['max_epochs'],
         weights_summary=None,
         precision=16 if torch.cuda.is_available() else 32,
+        deterministic=cfg['deterministic']
         #accelerator="ddp"
     )
 

@@ -12,9 +12,9 @@ if __name__ == "__main__":
     cfg = {
         'pretrained_name': 'bert-base-cased',
         'lr': 2e-5,
-        'freeze_backbone': 12,
+        'freeze_backbone': 0,
         'max_epochs': 4,
-        'batch_size': 128,
+        'batch_size': 32,
         'dropout': 0.1,
         'scheduler': 'onecycle',
         'deterministic': False,
@@ -68,3 +68,4 @@ if __name__ == "__main__":
 
     model = SarcasmDetector(config=cfg)
     trainer.fit(model, datamodule=dm)
+    trainer.test(model, verbose=False)

@@ -142,7 +142,7 @@ class SarcasmDetector(LightningModule):
         predictions = torch.argmax(logits, dim=1)
 
         self.log(
-            f'{step_type.value}_loss', loss, prog_bar=True, logger=step_type != StageType.TEST,
+            f'{step_type.value.lower()}_loss', loss, prog_bar=True, logger=step_type != StageType.TEST,
             sync_dist=step_type in (StageType.VAL, StageType.TEST)
         )
         metric_output = self.metrics[step_type.value](predictions, targets)

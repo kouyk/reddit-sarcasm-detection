@@ -50,7 +50,7 @@ class SarcasmDetector(LightningModule):
                                     'recall': Recall(average='macro', num_classes=self.num_classes),
                                     'mcc': MatthewsCorrcoef(num_classes=self.num_classes),
                                     'kappa': CohenKappa(num_classes=self.num_classes)})
-        self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value}_')
+        self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value.lower()}_')
                                       for step_type in StageType if step_type != StageType.PREDICT})
 
     def get_extractor(self):

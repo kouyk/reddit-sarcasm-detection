@@ -1,13 +1,12 @@
 import re
 from collections import OrderedDict
-from math import ceil
 
 import torch
 from pytorch_lightning import LightningModule
 from torch import nn
 from torch.nn.functional import cross_entropy
 from torch.optim.lr_scheduler import OneCycleLR
-from torchmetrics import Accuracy, F1, Precision, Recall, MatthewsCorrcoef, CohenKappa, MetricCollection
+from torchmetrics import F1, Precision, Recall, CohenKappa, MetricCollection
 from transformers import AutoModel, get_constant_schedule_with_warmup
 
 from .util import StageType
@@ -45,14 +44,13 @@ class SarcasmDetector(LightningModule):
         ]))
 
         # Initialise the metrics
-        metrics = MetricCollection({'accuracy': Accuracy(num_classes=self.num_classes),
-                                    'f1': F1(average='macro', num_classes=self.num_classes),
+        metrics = MetricCollection({'f1': F1(average='macro', num_classes=self.num_classes),
                                     'precision': Precision(average='macro', num_classes=self.num_classes),
                                     'recall': Recall(average='macro', num_classes=self.num_classes),
-                                    'mcc': MatthewsCorrcoef(num_classes=self.num_classes),
                                     'kappa': CohenKappa(num_classes=self.num_classes)})
         self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value.lower()}_')
                                       for step_type in StageType if step_type != StageType.PREDICT})
+        self.metrics.requires_grad_(False)
 
     def get_extractor(self):
         try:

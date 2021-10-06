@@ -1,5 +1,6 @@
 import re
 from collections import OrderedDict
+from math import ceil
 
 import torch
 from pytorch_lightning import LightningModule
@@ -105,12 +106,7 @@ class SarcasmDetector(LightningModule):
         batches = len(self.train_dataloader())
         batches = min(batches, limit_batches) if isinstance(limit_batches, int) else int(limit_batches * batches)
 
-        num_devices = max(1, self.trainer.num_gpus, self.trainer.num_processes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
-
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-        return (batches // effective_accum) * self.trainer.max_epochs
+        return (batches // self.trainer.accumulate_grad_batches) * self.trainer.max_epochs
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=self.hparams.lr,

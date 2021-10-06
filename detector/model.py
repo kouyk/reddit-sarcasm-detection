@@ -50,7 +50,6 @@ class SarcasmDetector(LightningModule):
                                     'kappa': CohenKappa(num_classes=self.num_classes)})
         self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value.lower()}_')
                                       for step_type in StageType if step_type != StageType.PREDICT})
-        self.metrics.requires_grad_(False)
 
     def get_extractor(self):
         try:

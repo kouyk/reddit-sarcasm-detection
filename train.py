@@ -38,7 +38,7 @@ def main(args: argparse.Namespace):
         default_hp_metric=False
     )
 
-    multi_gpu = args.gpus > 1
+    multi_gpu = args.gpus > 1 or args.num_nodes > 1
 
     trainer = Trainer.from_argparse_args(
         args,

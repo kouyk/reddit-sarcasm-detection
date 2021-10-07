@@ -38,15 +38,16 @@ def main(args: argparse.Namespace):
         default_hp_metric=False
     )
 
-    multi_gpu = args.gpus > 1 or args.num_nodes > 1
+    num_gpus = args.gpus if type(args.gpus) == int else len(args.gpus.strip(',').split(','))
+    multi_device = max(num_gpus, args.num_nodes) > 1
 
     trainer = Trainer.from_argparse_args(
         args,
         callbacks=callbacks,
         logger=logger,
         weights_summary=None,
-        accelerator='ddp' if multi_gpu else None,
-        plugins=DDPPlugin(find_unused_parameters=False) if multi_gpu else None
+        accelerator='ddp' if multi_device else None,
+        plugins=DDPPlugin(find_unused_parameters=False) if multi_device else None
     )
 
     model = SarcasmDetector(**vars(args))

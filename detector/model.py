@@ -6,7 +6,7 @@ from pytorch_lightning import LightningModule
 from torch import nn
 from torch.nn.functional import cross_entropy
 from torch.optim.lr_scheduler import OneCycleLR
-from torchmetrics import F1, Precision, Recall, CohenKappa, MetricCollection
+from torchmetrics import F1, Precision, Recall, CohenKappa, MetricCollection, Accuracy
 from transformers import AutoModel, get_constant_schedule_with_warmup
 
 from .util import StageType
@@ -44,10 +44,13 @@ class SarcasmDetector(LightningModule):
         ]))
 
         # Initialise the metrics
-        metrics = MetricCollection({'f1': F1(average='macro', num_classes=self.num_classes),
-                                    'precision': Precision(average='macro', num_classes=self.num_classes),
-                                    'recall': Recall(average='macro', num_classes=self.num_classes),
-                                    'kappa': CohenKappa(num_classes=self.num_classes)})
+        metrics = MetricCollection({
+            'accuracy': Accuracy(num_classes=self.num_classes, average='micro'),
+            'f1': F1(num_classes=self.num_classes, average='micro', ignore_index=0),
+            'kappa': CohenKappa(num_classes=self.num_classes),
+            'precision': Precision(num_classes=self.num_classes, average='micro', ignore_index=0),
+            'recall': Recall(num_classes=self.num_classes, average='micro', ignore_index=0),
+        })
         self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value.lower()}_')
                                       for step_type in StageType if step_type != StageType.PREDICT})
 

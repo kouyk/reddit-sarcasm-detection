@@ -20,7 +20,8 @@ class SarcasmDataModule(LightningDataModule):
                  test_path: str = 'dataset/test-balanced.csv',
                  pretrained_name: str = 'bert-base-cased',
                  batch_size: int = 32,
-                 max_length: int = 128):
+                 max_length: int = 512,
+                 use_parent: bool = True):
         super().__init__()
 
         self.train_path = train_path
@@ -28,6 +29,7 @@ class SarcasmDataModule(LightningDataModule):
         self.test_path = test_path
         self.batch_size = batch_size
         self.max_length = max_length
+        self.use_parent = use_parent
 
         self.num_workers = os.cpu_count() if platform.system() == 'Linux' else 1  # workaround Windows worker issue
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
@@ -55,7 +57,7 @@ class SarcasmDataModule(LightningDataModule):
                 return
 
             test_df = pd.read_csv(self.test_path)
-            self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_length)
+            self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_length, self.use_parent)
 
     def gen_dataloader(self, dataset, dataset_type: StageType):
         return DataLoader(dataset,

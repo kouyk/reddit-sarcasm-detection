@@ -10,28 +10,34 @@ class SarcasmDataset(Dataset):
     """
     TEXT_COLUMN = 'comment'
     LABEL_COLUMN = 'label'
+    PARENT_COLUMN = 'parent_comment'
 
-    def __init__(self, df: DataFrame, tokenizer: PreTrainedTokenizerBase, max_length: int = 512):
+    def __init__(self, df: DataFrame,
+                 tokenizer: PreTrainedTokenizerBase,
+                 max_length: int = 512,
+                 use_parent: bool = True):
         super().__init__()
 
         self.df = df.copy()
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.use_parent = use_parent
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, index):
-        selected_comment = self.df.loc[index][self.TEXT_COLUMN]
-        encoded = self.tokenizer(selected_comment,
+        selected = self.df.loc[index]
+        encoded = self.tokenizer(selected[SarcasmDataset.TEXT_COLUMN],
+                                 text_pair=selected[SarcasmDataset.PARENT_COLUMN] if self.use_parent else None,
                                  padding='max_length',
-                                 return_token_type_ids=False,
+                                 return_token_type_ids=True,
                                  truncation=True,
                                  max_length=self.max_length,
                                  return_tensors='pt')
         encoded = {k: v.flatten() for k, v in encoded.items()}
 
         if SarcasmDataset.LABEL_COLUMN in self.df.columns:
-            encoded['targets'] = torch.tensor(self.df.loc[index][SarcasmDataset.LABEL_COLUMN])
+            encoded['targets'] = torch.tensor(selected[SarcasmDataset.LABEL_COLUMN])
 
         return encoded

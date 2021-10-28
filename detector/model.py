@@ -122,8 +122,8 @@ class SarcasmDetector(LightningModule):
             'lr_scheduler': {'scheduler': lr_scheduler, 'interval': 'step'}
         }
 
-    def forward(self, input_ids, attention_mask, labels=None):
-        outputs = self.extractor(input_ids, attention_mask=attention_mask)
+    def forward(self, input_ids, token_type_ids, attention_mask, labels=None):
+        outputs = self.extractor(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         logits = self.classifier(outputs.pooler_output)
 
         if labels is None:
@@ -134,10 +134,11 @@ class SarcasmDetector(LightningModule):
 
     def common_step(self, batch, step_type: StageType):
         input_ids = batch['input_ids']
+        token_type_ids = batch['token_type_ids']
         attention_mask = batch['attention_mask']
         targets = batch['targets']
 
-        loss, logits = self(input_ids, attention_mask=attention_mask, labels=targets)
+        loss, logits = self(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, labels=targets)
         predictions = torch.argmax(logits, dim=1)
 
         self.log(

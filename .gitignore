@@ -138,7 +138,7 @@ dmypy.json
 cython_debug/
 
 # Dataset, logs and checkpoints should not be stored
-dataset/
+dataset
 lightning_logs/
 checkpoints/
 

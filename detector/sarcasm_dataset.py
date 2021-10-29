@@ -28,13 +28,15 @@ class SarcasmDataset(Dataset):
 
     def __getitem__(self, index):
         selected = self.df.loc[index]
-        encoded = self.tokenizer(selected[SarcasmDataset.TEXT_COLUMN],
-                                 text_pair=selected[SarcasmDataset.PARENT_COLUMN] if self.use_parent else None,
-                                 padding='max_length',
-                                 return_token_type_ids=True,
-                                 truncation=True,
-                                 max_length=self.max_length,
-                                 return_tensors='pt')
+        encoded = self.tokenizer(
+            text=selected[SarcasmDataset.PARENT_COLUMN] if self.use_parent else selected[SarcasmDataset.TEXT_COLUMN],
+            text_pair=selected[SarcasmDataset.TEXT_COLUMN] if self.use_parent else None,
+            padding='max_length',
+            return_token_type_ids=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors='pt'
+        )
         encoded = {k: v.flatten() for k, v in encoded.items()}
 
         if SarcasmDataset.LABEL_COLUMN in self.df.columns:

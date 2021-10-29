@@ -20,9 +20,9 @@ def main(args: argparse.Namespace):
 
     callbacks = [
         ModelCheckpoint(
-            filename='{epoch}-{val_loss:.2f}-{val_accuracy:.2f}',
-            monitor='val_loss',
-            mode='min',
+            filename='{epoch}-{val_loss:.2f}-{val_f1:.2f}-{val_accuracy:.2f}',
+            monitor='val_f1',
+            mode='max',
             save_last=False,
             save_top_k=1,
             every_n_epochs=1

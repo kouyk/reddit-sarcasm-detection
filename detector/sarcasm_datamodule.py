@@ -49,8 +49,8 @@ class SarcasmDataModule(LightningDataModule):
                 train_df.reset_index(drop=True)
                 val_df.reset_index(drop=True)
 
-            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length)
-            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length)
+            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length, self.use_parent)
+            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.use_parent)
 
         if stage in (None, 'test'):
             if not self.test_path:

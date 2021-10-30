@@ -46,11 +46,11 @@ class SarcasmDataset(Dataset):
         )
         encoded = {k: v.flatten() for k, v in encoded.items()}
         encoded['features'] = torch.cat([
-            torch.as_tensor(self.df[SarcasmDataset.SCORE_COLUMN]).unsqueeze(dim=0),
-            one_hot(torch.as_tensor(self.df[SarcasmDataset.MONTH_COLUMN]), num_classes=96),
-            one_hot(torch.as_tensor(self.df[SarcasmDataset.HOUR_COLUMN]), num_classes=24),
-            one_hot(torch.as_tensor(self.df[SarcasmDataset.AUTHOR_COLUMN]), num_classes=6),
-            one_hot(torch.as_tensor(self.df[SarcasmDataset.SUBREDDIT_COLUMN]), num_classes=5)
+            torch.as_tensor(selected[SarcasmDataset.SCORE_COLUMN]).unsqueeze(dim=0),
+            one_hot(torch.as_tensor(selected[SarcasmDataset.MONTH_COLUMN]), num_classes=96),
+            one_hot(torch.as_tensor(selected[SarcasmDataset.HOUR_COLUMN]), num_classes=24),
+            one_hot(torch.as_tensor(selected[SarcasmDataset.AUTHOR_COLUMN]), num_classes=6),
+            one_hot(torch.as_tensor(selected[SarcasmDataset.SUBREDDIT_COLUMN]), num_classes=5)
         ])
 
         if SarcasmDataset.LABEL_COLUMN in self.df.columns:

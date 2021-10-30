@@ -16,8 +16,8 @@ from .util import StageType
 class SarcasmDataModule(LightningDataModule):
 
     def __init__(self,
-                 train_path: str = 'dataset/train-balanced-usable.csv',
-                 test_path: str = 'dataset/test-balanced.csv',
+                 train_path: str = 'dataset/train.csv',
+                 test_path: str = 'dataset/test.csv',
                  type_dict_path: str = 'dataset/input_types.pkl',
                  pretrained_name: str = 'bert-base-cased',
                  batch_size: int = 32,

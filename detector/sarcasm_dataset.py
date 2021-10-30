@@ -46,7 +46,7 @@ class SarcasmDataset(Dataset):
         )
         encoded = {k: v.flatten() for k, v in encoded.items()}
         encoded['features'] = torch.cat([
-            torch.as_tensor(selected[SarcasmDataset.SCORE_COLUMN]).unsqueeze(dim=0),
+            torch.as_tensor(selected[SarcasmDataset.SCORE_COLUMN], dtype=torch.float).unsqueeze(dim=0),
             one_hot(torch.as_tensor(selected[SarcasmDataset.MONTH_COLUMN]), num_classes=96),
             one_hot(torch.as_tensor(selected[SarcasmDataset.HOUR_COLUMN]), num_classes=24),
             one_hot(torch.as_tensor(selected[SarcasmDataset.AUTHOR_COLUMN]), num_classes=6),

@@ -1,5 +1,6 @@
 import torch
 from pandas import DataFrame
+from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizerBase
 
@@ -11,8 +12,14 @@ class SarcasmDataset(Dataset):
     TEXT_COLUMN = 'comment'
     LABEL_COLUMN = 'label'
     PARENT_COLUMN = 'parent_comment'
+    AUTHOR_COLUMN = 'author_cluster_6'
+    SUBREDDIT_COLUMN = 'subreddit_cluster'
+    SCORE_COLUMN = 'score'
+    HOUR_COLUMN = 'hour'
+    MONTH_COLUMN = 'month'
 
-    def __init__(self, df: DataFrame,
+    def __init__(self,
+                 df: DataFrame,
                  tokenizer: PreTrainedTokenizerBase,
                  max_length: int = 512,
                  use_parent: bool = True):
@@ -27,7 +34,7 @@ class SarcasmDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, index):
-        selected = self.df.loc[index]
+        selected = self.df.iloc[index]
         encoded = self.tokenizer(
             text=selected[SarcasmDataset.PARENT_COLUMN] if self.use_parent else selected[SarcasmDataset.TEXT_COLUMN],
             text_pair=selected[SarcasmDataset.TEXT_COLUMN] if self.use_parent else None,
@@ -38,6 +45,13 @@ class SarcasmDataset(Dataset):
             return_tensors='pt'
         )
         encoded = {k: v.flatten() for k, v in encoded.items()}
+        encoded['features'] = torch.cat([
+            torch.as_tensor(self.df[SarcasmDataset.SCORE_COLUMN]).unsqueeze(dim=0),
+            one_hot(torch.as_tensor(self.df[SarcasmDataset.MONTH_COLUMN]), num_classes=96),
+            one_hot(torch.as_tensor(self.df[SarcasmDataset.HOUR_COLUMN]), num_classes=24),
+            one_hot(torch.as_tensor(self.df[SarcasmDataset.AUTHOR_COLUMN]), num_classes=6),
+            one_hot(torch.as_tensor(self.df[SarcasmDataset.SUBREDDIT_COLUMN]), num_classes=5)
+        ])
 
         if SarcasmDataset.LABEL_COLUMN in self.df.columns:
             encoded['targets'] = torch.tensor(selected[SarcasmDataset.LABEL_COLUMN])

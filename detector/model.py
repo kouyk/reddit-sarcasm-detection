@@ -13,7 +13,8 @@ from .util import StageType
 
 
 class SarcasmDetector(LightningModule):
-    num_classes = 2
+    NUM_CLASSES = 2
+    EXTRA_INPUT_FEATURE = 132
 
     @staticmethod
     def add_argparse_args(parent_parser):
@@ -38,18 +39,19 @@ class SarcasmDetector(LightningModule):
 
         # Adapted from RoBERTa's classification head
         self.classifier = torch.nn.Sequential(OrderedDict([
-            ('dense', nn.Linear(self.extractor.config.hidden_size, self.extractor.config.hidden_size)),
+            ('dense', nn.Linear(self.extractor.config.hidden_size + self.EXTRA_INPUT_FEATURE,
+                                self.extractor.config.hidden_size)),
             ('dropout', nn.Dropout(self.hparams.dropout)),
-            ('out_proj', nn.Linear(self.extractor.config.hidden_size, self.num_classes))
+            ('out_proj', nn.Linear(self.extractor.config.hidden_size, self.NUM_CLASSES))
         ]))
 
         # Initialise the metrics
         metrics = MetricCollection({
-            'accuracy': Accuracy(num_classes=self.num_classes, average='micro'),
-            'f1': F1(num_classes=self.num_classes, average='micro', ignore_index=0),
-            'kappa': CohenKappa(num_classes=self.num_classes),
-            'precision': Precision(num_classes=self.num_classes, average='micro', ignore_index=0),
-            'recall': Recall(num_classes=self.num_classes, average='micro', ignore_index=0),
+            'accuracy': Accuracy(num_classes=self.NUM_CLASSES, average='micro'),
+            'f1': F1(num_classes=self.NUM_CLASSES, average='micro', ignore_index=0),
+            'kappa': CohenKappa(num_classes=self.NUM_CLASSES),
+            'precision': Precision(num_classes=self.NUM_CLASSES, average='micro', ignore_index=0),
+            'recall': Recall(num_classes=self.NUM_CLASSES, average='micro', ignore_index=0),
         })
         self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value.lower()}_')
                                       for step_type in StageType if step_type != StageType.PREDICT})
@@ -125,9 +127,10 @@ class SarcasmDetector(LightningModule):
             'lr_scheduler': {'scheduler': lr_scheduler, 'interval': 'step'}
         }
 
-    def forward(self, input_ids, token_type_ids, attention_mask, labels=None):
+    def forward(self, input_ids, token_type_ids, attention_mask, features, labels=None):
         outputs = self.extractor(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
-        logits = self.classifier(outputs.pooler_output)
+        combined_features = torch.cat([outputs.pooler_output, features], dim=1)
+        logits = self.classifier(combined_features)
 
         if labels is None:
             return logits
@@ -139,9 +142,10 @@ class SarcasmDetector(LightningModule):
         input_ids = batch['input_ids']
         token_type_ids = batch['token_type_ids']
         attention_mask = batch['attention_mask']
+        features = batch['features']
         targets = batch['targets']
 
-        loss, logits = self(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, labels=targets)
+        loss, logits = self(input_ids, token_type_ids, attention_mask, features, targets)
         predictions = torch.argmax(logits, dim=1)
 
         self.log(

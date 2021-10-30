@@ -1,4 +1,5 @@
 import os
+import pickle
 import platform
 
 import pandas as pd
@@ -15,9 +16,9 @@ from .util import StageType
 class SarcasmDataModule(LightningDataModule):
 
     def __init__(self,
-                 train_path: str = 'dataset/train.csv',
-                 val_path: str = 'dataset/val.csv',
+                 train_path: str = 'dataset/train-balanced-usable.csv',
                  test_path: str = 'dataset/test-balanced.csv',
+                 type_dict_path: str = 'dataset/input_types.pkl',
                  pretrained_name: str = 'bert-base-cased',
                  batch_size: int = 32,
                  max_length: int = 512,
@@ -25,8 +26,8 @@ class SarcasmDataModule(LightningDataModule):
         super().__init__()
 
         self.train_path = train_path
-        self.val_path = val_path
         self.test_path = test_path
+        self.type_dict_path = type_dict_path
         self.batch_size = batch_size
         self.max_length = max_length
         self.use_parent = use_parent
@@ -39,17 +40,18 @@ class SarcasmDataModule(LightningDataModule):
             if not self.train_path:
                 return
 
-            if self.val_path:
-                train_df = pd.read_csv(self.train_path)
-                val_df = pd.read_csv(self.val_path)
-            else:
-                # Perform train-val split
-                df = pd.read_csv(self.train_path)
-                train_df, val_df = train_test_split(df, test_size=0.2)
-                train_df.reset_index(drop=True)
-                val_df.reset_index(drop=True)
+            with open(self.type_dict_path, 'rb') as f:
+                key_types = pickle.load(f)
 
-            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length, self.use_parent)
+            df = pd.read_csv(self.train_path, dtype=key_types)
+
+            # Perform train-val split
+            train_df, val_df = train_test_split(df, test_size=0.2)
+            train_df.reset_index(drop=True, inplace=True)
+            val_df.reset_index(drop=True, inplace=True)
+
+            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length,
+                                                self.use_parent)
             self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.use_parent)
 
         if stage in (None, 'test'):

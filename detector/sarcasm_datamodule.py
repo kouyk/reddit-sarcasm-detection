@@ -32,7 +32,7 @@ class SarcasmDataModule(LightningDataModule):
         self.max_length = max_length
         self.use_parent = use_parent
 
-        self.num_workers = os.cpu_count() if platform.system() == 'Linux' else 1  # workaround Windows worker issue
+        self.num_workers = os.cpu_count() // 2 if platform.system() == 'Linux' else 1  # workaround Windows worker issue
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
 
     def setup(self, stage=None):

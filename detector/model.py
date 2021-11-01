@@ -127,8 +127,8 @@ class SarcasmDetector(LightningModule):
             lr_scheduler = OneCycleLR(optimizer,
                                       total_steps=self.num_training_steps,
                                       max_lr=self.hparams.lr)
-        else:
-            num_warmup_steps = self.num_training_steps * 3 // 10
+        else:  # 'warmup_only'
+            num_warmup_steps = self.num_training_steps // self.trainer.max_epochs
             lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
         return {

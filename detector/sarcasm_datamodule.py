@@ -22,7 +22,8 @@ class SarcasmDataModule(LightningDataModule):
                  pretrained_name: str = 'bert-base-cased',
                  batch_size: int = 32,
                  max_length: int = 512,
-                 use_parent: bool = True):
+                 use_parent: bool = True,
+                 no_extra: bool = False):
         super().__init__()
 
         self.train_path = train_path
@@ -31,6 +32,7 @@ class SarcasmDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.max_length = max_length
         self.use_parent = use_parent
+        self.no_extra = no_extra
 
         self.num_workers = os.cpu_count() // 2 if platform.system() == 'Linux' else 1  # workaround Windows worker issue
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
@@ -51,8 +53,8 @@ class SarcasmDataModule(LightningDataModule):
             val_df.reset_index(drop=True, inplace=True)
 
             self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length,
-                                                self.use_parent)
-            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.use_parent)
+                                                self.use_parent, self.no_extra)
+            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.use_parent, self.no_extra)
 
         if stage in (None, 'test'):
             if not self.test_path:

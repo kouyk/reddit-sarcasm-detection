@@ -14,7 +14,7 @@ from .util import StageType
 
 class SarcasmDetector(LightningModule):
     NUM_CLASSES = 2
-    EXTRA_INPUT_FEATURE = 132
+    EXTRA_INPUT_FEATURE = 131
 
     @staticmethod
     def add_argparse_args(parent_parser):

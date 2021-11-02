@@ -52,8 +52,8 @@ class SarcasmDataset(Dataset):
                 torch.as_tensor(selected[SarcasmDataset.SCORE_COLUMN], dtype=torch.float).unsqueeze(dim=0),
                 one_hot(torch.as_tensor(selected[SarcasmDataset.MONTH_COLUMN]), num_classes=96),
                 one_hot(torch.as_tensor(selected[SarcasmDataset.HOUR_COLUMN]), num_classes=24),
-                one_hot(torch.as_tensor(selected[SarcasmDataset.AUTHOR_COLUMN]), num_classes=6),
-                one_hot(torch.as_tensor(selected[SarcasmDataset.SUBREDDIT_COLUMN]), num_classes=5)
+                one_hot(torch.as_tensor(selected[SarcasmDataset.AUTHOR_COLUMN]), num_classes=5),
+                one_hot(torch.as_tensor(selected[SarcasmDataset.SUBREDDIT_COLUMN]), num_classes=6)
             ])
 
         if SarcasmDataset.LABEL_COLUMN in self.df.columns:

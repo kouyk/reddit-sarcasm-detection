@@ -1,7 +1,7 @@
 import os
-import pickle
 import platform
 
+import joblib
 import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule
@@ -18,7 +18,7 @@ class SarcasmDataModule(LightningDataModule):
     def __init__(self,
                  train_path: str = 'dataset/train.csv',
                  test_path: str = 'dataset/test.csv',
-                 type_dict_path: str = 'dataset/input_types.pkl',
+                 type_dict_path: str = 'dataset/input_types.joblib',
                  pretrained_name: str = 'bert-base-cased',
                  batch_size: int = 32,
                  max_length: int = 512,
@@ -42,8 +42,7 @@ class SarcasmDataModule(LightningDataModule):
             if not self.train_path:
                 return
 
-            with open(self.type_dict_path, 'rb') as f:
-                key_types = pickle.load(f)
+            key_types = joblib.load(self.type_dict_path)
 
             df = pd.read_csv(self.train_path, dtype=key_types)
 

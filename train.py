@@ -2,7 +2,6 @@ import argparse
 
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.plugins.training_type import DDPPlugin
 from transformers import logging
 
@@ -32,11 +31,6 @@ def main(args: argparse.Namespace):
             log_momentum=True
         ),
     ]
-    logger = TensorBoardLogger(
-        save_dir=args.logdir,
-        name=args.pretrained_name,
-        default_hp_metric=False
-    )
 
     num_gpus = args.gpus if type(args.gpus) == int else len(args.gpus.strip(',').split(','))
     multi_device = max(num_gpus, args.num_nodes) > 1
@@ -44,7 +38,6 @@ def main(args: argparse.Namespace):
     trainer = Trainer.from_argparse_args(
         args,
         callbacks=callbacks,
-        logger=logger,
         weights_summary=None,
         accelerator='ddp' if multi_device else None,
         plugins=DDPPlugin(find_unused_parameters=False) if multi_device else None
@@ -60,7 +53,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(conflict_handler='resolve')
 
     # General args
-    parser.add_argument('--logdir', help="Logging directory for tensorboard", default='lightning_logs')
     parser.add_argument('--seed', help="Seed to use if deterministic flag is set", default=3244, type=int)
     parser.add_argument('--test', help="Perform testing at the end of training", action='store_true')
 
@@ -69,7 +61,6 @@ if __name__ == "__main__":
     parser = Trainer.add_argparse_args(parser)
     parser.set_defaults(gpus=1,
                         precision=16,
-                        max_epochs=4,
-                        weights_save_path="checkpoints")
+                        max_epochs=4)
 
     main(parser.parse_args())

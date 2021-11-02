@@ -12,7 +12,7 @@ class SarcasmDataset(Dataset):
     TEXT_COLUMN = 'comment'
     LABEL_COLUMN = 'label'
     PARENT_COLUMN = 'parent_comment'
-    AUTHOR_COLUMN = 'author_cluster_6'
+    AUTHOR_COLUMN = 'author_cluster'
     SUBREDDIT_COLUMN = 'subreddit_cluster'
     SCORE_COLUMN = 'score'
     HOUR_COLUMN = 'hour'

@@ -23,9 +23,11 @@ class SarcasmDataModule(LightningDataModule):
                  pretrained_name: str = 'bert-base-cased',
                  batch_size: int = 32,
                  max_length: int = 512,
-                 use_parent: bool = True,
-                 no_extra: bool = False):
+                 disabled_features=None):
         super().__init__()
+
+        if disabled_features is None:
+            disabled_features = []
 
         self.train_path = train_path
         self.val_path = val_path
@@ -33,8 +35,7 @@ class SarcasmDataModule(LightningDataModule):
         self.type_dict_path = type_dict_path
         self.batch_size = batch_size
         self.max_length = max_length
-        self.use_parent = use_parent
-        self.no_extra = no_extra
+        self.disabled_features = disabled_features
 
         self.num_workers = os.cpu_count() // 2 if platform.system() == 'Linux' else 1  # workaround Windows worker issue
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
@@ -55,16 +56,15 @@ class SarcasmDataModule(LightningDataModule):
                 train_df.reset_index(drop=True, inplace=True)
                 val_df.reset_index(drop=True, inplace=True)
 
-            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length,
-                                                self.use_parent, self.no_extra)
-            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.use_parent, self.no_extra)
+            self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length, self.disabled_features)
+            self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.disabled_features)
 
         if stage in (None, 'test'):
             if not self.test_path:
                 return
 
             test_df = pd.read_csv(self.test_path)
-            self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_length, self.use_parent)
+            self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_length, self.disabled_features)
 
     def gen_dataloader(self, dataset, dataset_type: StageType):
         return DataLoader(dataset,

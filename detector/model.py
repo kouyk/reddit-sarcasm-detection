@@ -9,12 +9,11 @@ from torch.optim.lr_scheduler import OneCycleLR
 from torchmetrics import F1, Precision, Recall, CohenKappa, MetricCollection, Accuracy
 from transformers import AutoModel, get_constant_schedule_with_warmup
 
-from .util import StageType
+from .util import StageType, Column, COL_ONEHOT_CLS
 
 
 class SarcasmDetector(LightningModule):
     NUM_CLASSES = 2
-    EXTRA_INPUT_FEATURE = 131
 
     @staticmethod
     def add_argparse_args(parent_parser):
@@ -25,14 +24,16 @@ class SarcasmDetector(LightningModule):
                             type=int)
         parser.add_argument('--dropout', default=0.1, type=float)
         parser.add_argument('--scheduler', help="LR scheduler", default='onecycle', choices=['onecycle', 'warmup_only'])
-        parser.add_argument('--no_extra', help="Ignore extra features for classification", action='store_true')
+        parser.add_argument('--disabled_features', help="Don't use the given features for classification", nargs='*',
+                            type=str, default=[],
+                            choices={c.value for c in Column if c not in [Column.COMMENT, Column.LABEL]})
 
         return parent_parser
 
     def __init__(self, return_logits=False, **kwargs):
         super().__init__()
         self.save_hyperparameters("pretrained_name", "lr", "freeze_extractor", "dropout", "scheduler", "batch_size",
-                                  "max_length", "no_extra")
+                                  "max_length", "disabled_features")
         self.return_logits = return_logits
 
         self.extractor = self.get_extractor()
@@ -40,8 +41,9 @@ class SarcasmDetector(LightningModule):
 
         # Adapted from RoBERTa's classification head
         dense_input_size = self.extractor.config.hidden_size
-        if not self.hparams.no_extra:
-            dense_input_size += self.EXTRA_INPUT_FEATURE
+        dense_input_size += sum([v for k, v in COL_ONEHOT_CLS.items() if k not in self.hparams.disabled_features])
+        if Column.SCORE.value not in self.hparams.disabled_features:
+            dense_input_size += 1
 
         self.classifier = torch.nn.Sequential(OrderedDict([
             ('dense', nn.Linear(dense_input_size, self.extractor.config.hidden_size)),
@@ -138,9 +140,7 @@ class SarcasmDetector(LightningModule):
 
     def forward(self, input_ids, token_type_ids, attention_mask, features, labels=None):
         outputs = self.extractor(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
-        classifier_input = outputs.pooler_output
-        if not self.hparams.no_extra:
-            classifier_input = torch.cat([classifier_input, features], dim=1)
+        classifier_input = torch.cat([outputs.pooler_output, features], dim=1)
         logits = self.classifier(classifier_input)
 
         if labels is None:
@@ -153,7 +153,7 @@ class SarcasmDetector(LightningModule):
         input_ids = batch['input_ids']
         token_type_ids = batch['token_type_ids']
         attention_mask = batch['attention_mask']
-        features = batch['features'] if not self.hparams.no_extra else None
+        features = batch['features']
         targets = batch['targets']
 
         loss, logits = self(input_ids, token_type_ids, attention_mask, features, targets)

@@ -18,7 +18,7 @@ class SarcasmDetector(LightningModule):
 
     @staticmethod
     def add_argparse_args(parent_parser):
-        parser = parent_parser.add_argument_group("SarcasmDectector")
+        parser = parent_parser.add_argument_group("SarcasmDetector")
         parser.add_argument('--pretrained_name', help="Name of pretrained model", default='bert-base-cased')
         parser.add_argument('--lr', help="Learning rate", default=1e-5, type=float)
         parser.add_argument('--freeze_extractor', help="Number of layers to freeze in the pretrained model", default=0,

@@ -17,6 +17,7 @@ class SarcasmDataModule(LightningDataModule):
 
     def __init__(self,
                  train_path: str = 'dataset/train.csv',
+                 val_path: str = None,
                  test_path: str = 'dataset/test.csv',
                  type_dict_path: str = 'dataset/input_types.joblib',
                  pretrained_name: str = 'bert-base-cased',
@@ -27,6 +28,7 @@ class SarcasmDataModule(LightningDataModule):
         super().__init__()
 
         self.train_path = train_path
+        self.val_path = val_path
         self.test_path = test_path
         self.type_dict_path = type_dict_path
         self.batch_size = batch_size
@@ -44,12 +46,14 @@ class SarcasmDataModule(LightningDataModule):
 
             key_types = joblib.load(self.type_dict_path)
 
-            df = pd.read_csv(self.train_path, dtype=key_types)
-
-            # Perform train-val split
-            train_df, val_df = train_test_split(df, test_size=0.2)
-            train_df.reset_index(drop=True, inplace=True)
-            val_df.reset_index(drop=True, inplace=True)
+            train_df = pd.read_csv(self.train_path, dtype=key_types)
+            if self.val_path is not None:
+                val_df = pd.read_csv(self.val_path, dtype=key_types)
+            else:
+                # Perform train-val split
+                train_df, val_df = train_test_split(train_df, test_size=0.2)
+                train_df.reset_index(drop=True, inplace=True)
+                val_df.reset_index(drop=True, inplace=True)
 
             self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length,
                                                 self.use_parent, self.no_extra)

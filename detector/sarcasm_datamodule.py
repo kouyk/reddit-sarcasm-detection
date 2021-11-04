@@ -41,11 +41,11 @@ class SarcasmDataModule(LightningDataModule):
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
 
     def setup(self, stage=None):
+        key_types = joblib.load(self.type_dict_path)
+
         if stage in (None, 'fit'):
             if not self.train_path:
                 return
-
-            key_types = joblib.load(self.type_dict_path)
 
             train_df = pd.read_csv(self.train_path, dtype=key_types)
             if self.val_path is not None:
@@ -63,7 +63,7 @@ class SarcasmDataModule(LightningDataModule):
             if not self.test_path:
                 return
 
-            test_df = pd.read_csv(self.test_path)
+            test_df = pd.read_csv(self.test_path, dtype=key_types)
             self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_length, self.disabled_features)
 
     def gen_dataloader(self, dataset, dataset_type: StageType):

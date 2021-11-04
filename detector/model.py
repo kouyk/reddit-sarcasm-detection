@@ -23,7 +23,7 @@ class SarcasmDetector(LightningModule):
         parser.add_argument('--freeze_extractor', help="Number of layers to freeze in the pretrained model", default=0,
                             type=int)
         parser.add_argument('--dropout', default=0.1, type=float)
-        parser.add_argument('--scheduler', help="LR scheduler", default='onecycle', choices=['onecycle', 'warmup_only'])
+        parser.add_argument('--scheduler', help="LR scheduler", default='warmup', choices=['onecycle', 'warmup'])
         parser.add_argument('--disabled_features', help="Don't use the given features for classification", nargs='*',
                             type=str, default=[],
                             choices={c.value for c in Column if c not in [Column.COMMENT, Column.LABEL]})
@@ -129,7 +129,7 @@ class SarcasmDetector(LightningModule):
             lr_scheduler = OneCycleLR(optimizer,
                                       total_steps=self.num_training_steps,
                                       max_lr=self.hparams.lr)
-        else:  # 'warmup_only'
+        else:  # 'warmup'
             num_warmup_steps = self.num_training_steps // self.trainer.max_epochs
             lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 

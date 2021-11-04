@@ -5,7 +5,6 @@ import joblib
 import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule
-from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
@@ -17,7 +16,7 @@ class SarcasmDataModule(LightningDataModule):
 
     def __init__(self,
                  train_path: str = 'dataset/train.csv',
-                 val_path: str = None,
+                 val_path: str = 'dataset/val.csv',
                  test_path: str = 'dataset/test.csv',
                  type_dict_path: str = 'dataset/input_types.joblib',
                  pretrained_name: str = 'bert-base-cased',
@@ -44,25 +43,13 @@ class SarcasmDataModule(LightningDataModule):
         key_types = joblib.load(self.type_dict_path)
 
         if stage in (None, 'fit'):
-            if not self.train_path:
-                return
-
             train_df = pd.read_csv(self.train_path, dtype=key_types)
-            if self.val_path is not None:
-                val_df = pd.read_csv(self.val_path, dtype=key_types)
-            else:
-                # Perform train-val split
-                train_df, val_df = train_test_split(train_df, test_size=0.2, stratify=train_df.label)
-                train_df.reset_index(drop=True, inplace=True)
-                val_df.reset_index(drop=True, inplace=True)
+            val_df = pd.read_csv(self.val_path, dtype=key_types)
 
             self.train_dataset = SarcasmDataset(train_df, self.tokenizer, self.max_length, self.disabled_features)
             self.val_dataset = SarcasmDataset(val_df, self.tokenizer, self.max_length, self.disabled_features)
 
         if stage in (None, 'test'):
-            if not self.test_path:
-                return
-
             test_df = pd.read_csv(self.test_path, dtype=key_types)
             self.test_dataset = SarcasmDataset(test_df, self.tokenizer, self.max_length, self.disabled_features)
 

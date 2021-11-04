@@ -1,7 +1,7 @@
 import argparse
 
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from pytorch_lightning.plugins.training_type import DDPPlugin
 from transformers import logging
 
@@ -30,6 +30,12 @@ def main(args: argparse.Namespace):
             logging_interval='step',
             log_momentum=True
         ),
+        EarlyStopping(
+            monitor='val_f1',
+            min_delta=0.0,
+            patience=3,
+            mode='max'
+        )
     ]
 
     num_gpus = args.gpus if type(args.gpus) == int else len(args.gpus.strip(',').split(','))

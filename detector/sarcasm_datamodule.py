@@ -52,7 +52,7 @@ class SarcasmDataModule(LightningDataModule):
                 val_df = pd.read_csv(self.val_path, dtype=key_types)
             else:
                 # Perform train-val split
-                train_df, val_df = train_test_split(train_df, test_size=0.2)
+                train_df, val_df = train_test_split(train_df, test_size=0.2, stratify=train_df.label)
                 train_df.reset_index(drop=True, inplace=True)
                 val_df.reset_index(drop=True, inplace=True)
 

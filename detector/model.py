@@ -1,16 +1,14 @@
 import re
-from collections import OrderedDict
 from math import ceil
 
 import torch
 from pytorch_lightning import LightningModule
 from torch import nn
-from torch.nn.functional import cross_entropy
 from torch.optim.lr_scheduler import OneCycleLR
 from torchmetrics import F1, Precision, Recall, CohenKappa, MetricCollection, Accuracy
-from transformers import AutoModel, get_constant_schedule_with_warmup
+from transformers import AutoModelForSequenceClassification, get_constant_schedule_with_warmup
 
-from .util import StageType, Column, COL_ONEHOT_CLS, get_device_count
+from .util import StageType, get_device_count
 
 
 class SarcasmDetector(LightningModule):
@@ -25,32 +23,18 @@ class SarcasmDetector(LightningModule):
                             type=int)
         parser.add_argument('--dropout', default=0.1, type=float)
         parser.add_argument('--scheduler', help="LR scheduler", default='warmup', choices=['onecycle', 'warmup'])
-        parser.add_argument('--disabled_features', help="Don't use the given features for classification", nargs='*',
-                            type=str, default=[],
-                            choices={c.value for c in Column if c not in [Column.COMMENT, Column.LABEL]})
+        parser.add_argument('--enable_parent', help="Use the parent comment for classification", action='store_true')
 
         return parent_parser
 
     def __init__(self, return_logits=False, **kwargs):
         super().__init__()
         self.save_hyperparameters("pretrained_name", "lr", "freeze_extractor", "dropout", "scheduler", "batch_size",
-                                  "max_length", "disabled_features")
+                                  "max_length", "enable_parent")
         self.return_logits = return_logits
 
-        self.extractor = self.get_extractor()
-        self.freeze_extractor_layers()
-
-        # Adapted from RoBERTa's classification head
-        dense_input_size = self.extractor.config.hidden_size
-        dense_input_size += sum([v for k, v in COL_ONEHOT_CLS.items() if k not in self.hparams.disabled_features])
-        if Column.SCORE.value not in self.hparams.disabled_features:
-            dense_input_size += 1
-
-        self.classifier = torch.nn.Sequential(OrderedDict([
-            ('dense', nn.Linear(dense_input_size, self.extractor.config.hidden_size)),
-            ('dropout', nn.Dropout(self.hparams.dropout)),
-            ('out_proj', nn.Linear(self.extractor.config.hidden_size, self.NUM_CLASSES))
-        ]))
+        self.classifier = self.get_classifier()
+        self.freeze_classifier_layers()
 
         # Initialise the metrics
         metrics = MetricCollection({
@@ -63,27 +47,31 @@ class SarcasmDetector(LightningModule):
         self.metrics = nn.ModuleDict({step_type.value: metrics.clone(prefix=f'{step_type.value.lower()}_')
                                       for step_type in StageType if step_type != StageType.PREDICT})
 
-    def get_extractor(self):
+    def get_classifier(self):
         try:
-            extractor = AutoModel.from_pretrained(
+            extractor = AutoModelForSequenceClassification.from_pretrained(
                 self.hparams.pretrained_name,
-                hidden_dropout_prob=self.hparams.dropout
+                hidden_dropout_prob=self.hparams.dropout,
+                problem_type='single_label_classification',
+                num_labels=self.NUM_CLASSES
             )
         except TypeError:
-            extractor = AutoModel.from_pretrained(
+            extractor = AutoModelForSequenceClassification.from_pretrained(
                 self.hparams.pretrained_name,
-                dropout=self.hparams.dropout
+                dropout=self.hparams.dropout,
+                problem_type='single_label_classification',
+                num_labels=self.NUM_CLASSES
             )
 
         return extractor
 
-    def freeze_extractor_layers(self):
+    def freeze_classifier_layers(self):
         if self.hparams.freeze_extractor is not None:
             assert (isinstance(self.hparams.freeze_extractor, int)
                     and 0 <= self.hparams.freeze_extractor <= self.extractor_layer_count), \
                 f'freeze_extractor must be an integer between 0 and {self.extractor_layer_count}'
 
-            for name, param in self.extractor.base_model.named_parameters():
+            for name, param in self.classifier.base_model.named_parameters():
                 if f'layer.{self.hparams.freeze_extractor}.' in name:
                     break
 
@@ -93,7 +81,7 @@ class SarcasmDetector(LightningModule):
     def extractor_layer_count(self) -> int:
         pattern = re.compile(r"layer\.(\d+)\.")
         layer_index = set()
-        for name, param in self.extractor.named_parameters():
+        for name, param in self.classifier.named_parameters():
             match = pattern.search(name)
             if match:
                 layer_index.add(int(match.group(1)))
@@ -140,25 +128,21 @@ class SarcasmDetector(LightningModule):
             'lr_scheduler': {'scheduler': lr_scheduler, 'interval': 'step'}
         }
 
-    def forward(self, input_ids, token_type_ids, attention_mask, features, labels=None):
-        outputs = self.extractor(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
-        classifier_input = torch.cat([outputs.pooler_output, features], dim=1)
-        logits = self.classifier(classifier_input)
+    def forward(self, input_ids, token_type_ids, attention_mask, labels=None):
+        output = self.classifier(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
 
         if labels is None:
-            return logits
+            return output.logits
 
-        loss = cross_entropy(logits, labels)
-        return loss, logits
+        return output.loss, output.logits
 
     def common_step(self, batch, step_type: StageType):
         input_ids = batch['input_ids']
         token_type_ids = batch['token_type_ids']
         attention_mask = batch['attention_mask']
-        features = batch['features']
         targets = batch['targets']
 
-        loss, logits = self(input_ids, token_type_ids, attention_mask, features, targets)
+        loss, logits = self(input_ids, token_type_ids, attention_mask, targets)
         predictions = torch.argmax(logits, dim=1)
 
         self.log(

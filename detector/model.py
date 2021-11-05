@@ -90,7 +90,7 @@ class SarcasmDetector(LightningModule):
 
     @property
     def extractor_layer_count(self) -> int:
-        pattern = re.compile(r"\.layer\.(\d+)\.")
+        pattern = re.compile(r"layer\.(\d+)\.")
         layer_index = set()
         for name, param in self.extractor.named_parameters():
             match = pattern.search(name)

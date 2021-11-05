@@ -129,7 +129,7 @@ class SarcasmDetector(LightningModule):
         }
 
     def forward(self, input_ids, token_type_ids, attention_mask, labels=None):
-        output = self.classifier(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        output = self.classifier(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, labels=labels)
 
         if labels is None:
             return output.logits

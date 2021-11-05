@@ -191,8 +191,3 @@ class SarcasmDetector(LightningModule):
         predictions = torch.argmax(logits, 1)
 
         return predictions
-
-    def get_progress_bar_dict(self):
-        items = super().get_progress_bar_dict()
-        items.pop('loss')
-        return items

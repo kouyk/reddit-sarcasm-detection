@@ -1,11 +1,12 @@
 import argparse
 
+import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
 from pytorch_lightning.plugins.training_type import DDPPlugin
 from transformers import logging
 
-from detector import SarcasmDataModule, SarcasmDetector
+from detector import SarcasmDataModule, SarcasmDetector, SarcasmProgressBar
 
 logging.set_verbosity_error()
 
@@ -35,17 +36,17 @@ def main(args: argparse.Namespace):
             min_delta=0.0,
             patience=3,
             mode='max'
-        )
+        ),
+        SarcasmProgressBar()
     ]
 
-    num_gpus = args.gpus if type(args.gpus) == int else len(args.gpus.strip(',').split(','))
-    multi_device = max(num_gpus, args.num_nodes) > 1
+    num_devices = args.devices if type(args.devices) == int else len(args.devices.strip(',').split(','))
+    multi_device = max(num_devices, args.num_nodes) > 1
 
     trainer = Trainer.from_argparse_args(
         args,
         callbacks=callbacks,
-        weights_summary=None,
-        accelerator='ddp' if multi_device else None,
+        strategy='ddp' if multi_device else None,
         plugins=DDPPlugin(find_unused_parameters=False) if multi_device else None
     )
 
@@ -65,8 +66,10 @@ if __name__ == "__main__":
     parser = SarcasmDataModule.add_argparse_args(parser)
     parser = SarcasmDetector.add_argparse_args(parser)
     parser = Trainer.add_argparse_args(parser)
-    parser.set_defaults(gpus=1,
-                        precision=16,
+    parser.set_defaults(accelerator='auto',
+                        devices=1,
+                        enable_model_summary=False,
+                        precision='bf16' if torch.cuda.is_bf16_supported() else 16,
                         max_epochs=4)
 
     main(parser.parse_args())

@@ -46,8 +46,7 @@ def main(args: argparse.Namespace):
     trainer = Trainer.from_argparse_args(
         args,
         callbacks=callbacks,
-        strategy='ddp' if multi_device else None,
-        plugins=DDPPlugin(find_unused_parameters=False) if multi_device else None
+        strategy=DDPPlugin(find_unused_parameters=False) if multi_device else None
     )
 
     model = SarcasmDetector(**vars(args))

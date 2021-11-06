@@ -1,5 +1,6 @@
 import re
 from collections import OrderedDict
+from math import ceil
 
 import torch
 from pytorch_lightning import LightningModule
@@ -9,7 +10,7 @@ from torch.optim.lr_scheduler import OneCycleLR
 from torchmetrics import F1, Precision, Recall, CohenKappa, MetricCollection, Accuracy
 from transformers import AutoModel, get_constant_schedule_with_warmup
 
-from .util import StageType, Column, COL_ONEHOT_CLS
+from .util import StageType, Column, COL_ONEHOT_CLS, get_device_count
 
 
 class SarcasmDetector(LightningModule):
@@ -107,19 +108,20 @@ class SarcasmDetector(LightningModule):
         Adapted from https://github.com/PyTorchLightning/pytorch-lightning/issues/5449#issuecomment-774265729
         """
 
-        if self.trainer.max_steps:
+        if self.trainer.max_steps > 0:
             return self.trainer.max_steps
 
         limit_batches = self.trainer.limit_train_batches
-        batches = len(self.train_dataloader())
-        batches = min(batches, limit_batches) if isinstance(limit_batches, int) else int(limit_batches * batches)
-        num_devices = max(1, self.trainer.num_gpus * self.trainer.num_nodes)
-        if self.trainer.tpu_cores:
-            num_devices = max(num_devices, self.trainer.tpu_cores)
+        effective_accum = self.trainer.accumulate_grad_batches
+        if not isinstance(limit_batches, int):
+            batches = int(len(self.trainer.datamodule.train_dataloader()) * limit_batches)
+            num_devices = get_device_count(self.trainer.devices)
+            num_devices *= self.trainer.num_nodes
+            effective_accum *= num_devices
+        else:
+            batches = limit_batches
 
-        effective_accum = self.trainer.accumulate_grad_batches * num_devices
-
-        return (batches // effective_accum) * self.trainer.max_epochs
+        return ceil(batches / effective_accum) * self.trainer.max_epochs
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, self.parameters()), lr=self.hparams.lr,
@@ -130,7 +132,7 @@ class SarcasmDetector(LightningModule):
                                       total_steps=self.num_training_steps,
                                       max_lr=self.hparams.lr)
         else:  # 'warmup'
-            num_warmup_steps = self.num_training_steps // self.trainer.max_epochs
+            num_warmup_steps = 1000
             lr_scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=num_warmup_steps)
 
         return {

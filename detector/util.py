@@ -1,5 +1,7 @@
 from enum import Enum
 
+import torch
+
 
 class StageType(Enum):
     TRAIN = 'Train'
@@ -17,6 +19,22 @@ class Column(Enum):
     SCORE = 'score'
     HOUR = 'hour'
     MONTH = 'month'
+
+
+def get_device_count(devices):
+    if devices is None:
+        return 1
+    if isinstance(devices, int):
+        return devices
+    if not isinstance(devices, str):
+        raise ValueError("'devices' has to be int or str")
+    if devices.isnumeric():
+        return int(devices)
+    if devices == 'auto':
+        return torch.cuda.device_count()
+
+    return len(devices.strip(',').split(','))
+
 
 
 COL_ONEHOT_CLS = {

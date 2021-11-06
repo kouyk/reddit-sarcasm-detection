@@ -7,6 +7,7 @@ from pytorch_lightning.plugins.training_type import DDPPlugin
 from transformers import logging
 
 from detector import SarcasmDataModule, SarcasmDetector, SarcasmProgressBar
+from detector.util import get_device_count
 
 logging.set_verbosity_error()
 
@@ -40,8 +41,7 @@ def main(args: argparse.Namespace):
         SarcasmProgressBar()
     ]
 
-    num_devices = args.devices if type(args.devices) == int else len(args.devices.strip(',').split(','))
-    multi_device = max(num_devices, args.num_nodes) > 1
+    multi_device = get_device_count(args.devices) * args.num_nodes > 1
 
     trainer = Trainer.from_argparse_args(
         args,

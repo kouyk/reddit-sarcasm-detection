@@ -167,9 +167,10 @@ class SarcasmDetector(LightningModule):
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         input_ids = batch['input_ids']
+        token_type_ids = batch['token_type_ids']
         attention_mask = batch['attention_mask']
 
-        logits = self(input_ids, attention_mask=attention_mask)
+        logits = self(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
 
         if self.return_logits:
             return logits

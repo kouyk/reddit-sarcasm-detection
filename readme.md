@@ -12,7 +12,20 @@ often creates more trouble than it is worth. Code is mainly tested on machine ru
 ## Downloading of data
 
 There's a data preparation notebook that can be used to fetch the original dataset, along with some simple preprocessing
-to cleanup problematic data and save it in a proper CSV format as opposed to the original TSV for ease of loading.
+to clean up problematic data and save it in a proper CSV format as opposed to the original TSV for ease of loading.
 
-A mirror of the files are [here](https://drive.google.com/drive/folders/1vxaSuw-LCu2PLkeH-VCK5gi7dbeOH59U?usp=sharing)
-as well, since it requires a lot of RAM to process the unbalanced datasets. (SoC Gmail login required)
+## Training
+
+The codebase is able to train a BERT-like backbone, marginally better results can be obtained by using RoBERTa. One of
+the better models can be obtained by running with the following arguments:
+
+```
+python train.py --batch_size 64 \
+                --lr 1e-5 \
+                --max_epochs 4 \
+                --default_root_dir /path/to/store/models \
+                --freeze_extractor 0 \
+                --max_length 128 \
+                --pretrained_name roberta-base \
+                --enable_parent
+```
